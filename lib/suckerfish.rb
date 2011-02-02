@@ -11,6 +11,7 @@ class Suckerfish
   attr_reader :child, :parent, :block_to_execute
   
   def initialize &block_to_execute
+    raise 'Suckerfish needs a block to tell it what to do in the master process.' unless block_given?
     @child, @parent   = IO.pipe
     @block_to_execute = block_to_execute
     start_master_process_thread

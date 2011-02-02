@@ -10,9 +10,9 @@ class Suckerfish
   
   attr_reader :child, :parent, :block_to_execute
   
-  def initialize &block
+  def initialize &block_to_execute
     @child, @parent   = IO.pipe
-    @block_to_execute = block
+    @block_to_execute = block_to_execute
     start_master_process_thread
   end
   
@@ -23,12 +23,30 @@ class Suckerfish
     #
     Thread.new do
       loop do
+        # Wait for input from the child.
+        #
         IO.select([child], nil, nil, 2) or next
+        
+        # Get the message.
+        #
         result = child.gets ';;;'
+        
+        #
+        #
         pid, args = eval result
-        next unless Array === args
-        block_to_execute configuration_hash
+        
+        # It needs to be an array of params.
+        #
+        next unless Array === args # TODO Rewrite to to_ary?
+        
+        # Execute the block with the given parameters.
+        #
+        execute_block_with *args
+        
+        #
+        #
         kill_each_worker_except pid
+        
       # TODO rescue on error.
         
       end
@@ -61,22 +79,26 @@ class Suckerfish
     worker = Unicorn::HttpServer::WORKERS.delete(wpid) and worker.tmp.close rescue nil
   end
   
-  # Updates any parameters with the ones given and
-  # returns the updated params.
-  #
-  # The params are a strictly defined hash of:
-  #   * querying_removes_characters: Regexp
-  #   * querying_stopwords:          Regexp
-  #   TODO etc.
-  #
   # This first tries to update in the child process,
   # and if successful, in the parent process
   #
+  # TODO Alias?
+  #
   def process *args
+    # Close the child, maybe.
+    #
     close_child
-    exclaim "Trying to update worker child configuration." unless configuration_hash.empty?
-    result = execute_block_with *args
+    
+    # Try to execute it.
+    #
+    result = execute_block_with *args # Dup if someone is trying to be clever?
+    
+    # Success! Write the parent.
+    #
     write_parent args
+    
+    # Return the result.
+    #
     result
   rescue StandardError => e
     # I need to die such that my broken config is never used.
@@ -85,34 +107,37 @@ class Suckerfish
     #       if it would fail in the master!
     #
     harakiri
+    
     # Reraise to the user.
     #
     raise e
   end
-  # Kills itself, but still answering the request honorably.
+  
+  # Kills itself, but still "answering" the request honorably.
   #
   def harakiri
     Process.kill :QUIT, Process.pid
   end
+  
   # Write the parent.
   #
   # Note: The ;;; is the end marker for the message.
+  # TODO: Clever? Too clever?
   #
   def write_parent parameters
     parent.write "#{[Process.pid, parameters]};;;"
   end
+  
   # Close the child if it isn't yet closed.
   #
   def close_child
     child.close unless child.closed?
   end
   
-  # Tries updating the configuration in the child process or parent process.
-  # 
-  # TODO Catch errors?
+  # Tries running the block in the child process or parent process.
   #
   def execute_block_with *args
-    @block_to_execute.call *args
+    block_to_execute.call *args
   end
   
 end

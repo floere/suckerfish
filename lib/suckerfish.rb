@@ -92,20 +92,25 @@ class Suckerfish
   #
   # TODO Alias? Rename?
   #
-  def process *args
+  def process *parameters
     # Close the child, maybe.
     #
     close_child
     
-    # Try to execute it.
+    # Convert into a message.
     #
-    # Dup if someone is trying to be clever?
+    message = messagified parameters
+    
+    # Simulate the sending of the message
+    # in the child and running the block.
     #
-    result = execute_block_with *args
+    # This might fail.
+    #
+    simulate_with parameters
     
     # Success! Write the parent.
     #
-    write_parent args
+    write_parent message
     
     # Return the result.
     #
@@ -118,9 +123,30 @@ class Suckerfish
     #
     harakiri
     
-    # Reraise to the user.
+    # Reraise to the user of Suckerfish.
     #
     raise e
+  end
+  
+  # Simulates the sending and executing of the block
+  # as it would be in the parent.
+  #
+  def simulate_with message
+    # Try to eval the message given.
+    #
+    _, parameters = eval message
+    
+    # Try to execute it.
+    #
+    # Dup if someone is trying to be clever?
+    #
+    result = execute_block_with parameters
+  end
+  
+  # Translates the parameters into a message that can be sent to the parent.
+  #
+  def messagified parameters
+    %Q{#{[Process.pid, parameters]};;;}
   end
   
   # Kills itself, but still "answering" the request honorably.
@@ -137,8 +163,8 @@ class Suckerfish
   # TODO: Problematic if you want to pass objects that can't be reevaluated from the string.
   #       I actually need to also eval this string in the child.
   #
-  def write_parent parameters
-    parent.write "#{[Process.pid, parameters]};;;"
+  def write_parent message
+    parent.write message
   end
   
   # Close the child if it isn't yet closed.
@@ -149,8 +175,8 @@ class Suckerfish
   
   # Tries running the block in the child process or parent process.
   #
-  def execute_block_with *args
-    block_to_execute.call *args
+  def execute_block_with parameters
+    block_to_execute.call *parameters
   end
   
 end

@@ -53,13 +53,26 @@ describe Suckerfish do
     
     describe 'execute_block_with' do
       it 'delegates to the block_to_execute' do
-        @suckerfish.execute_block_with(1,2).should == [1,2,[]]
+        @suckerfish.execute_block_with([1,2]).should == [1,2,[]]
       end
       it 'delegates to the block_to_execute' do
-        @suckerfish.execute_block_with(1,2,3).should == [1,2,[3]]
+        @suckerfish.execute_block_with([1,2,3]).should == [1,2,[3]]
       end
       it 'delegates to the block_to_execute' do
-        @suckerfish.execute_block_with(1,2,3,4).should == [1,2,[3,4]]
+        @suckerfish.execute_block_with([1,2,3,4]).should == [1,2,[3,4]]
+      end
+    end
+    
+    describe 'write_parent' do
+      before(:each) do
+        @parent = stub :parent
+        
+        @suckerfish.stub! :parent => @parent
+      end
+      it 'writes the parent in a specific way' do
+        @parent.should_receive(:write).once.with :some_message
+        
+        @suckerfish.write_parent :some_message
       end
     end
     

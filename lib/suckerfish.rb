@@ -27,13 +27,13 @@ class Suckerfish
         #
         IO.select([child], nil, nil, 2) or next
         
-        # Get the message.
+        # Get the message from the child.
         #
         result = child.gets ';;;'
         
+        # Evaluate and split what the child sent.
         #
-        #
-        pid, args = eval result
+        child_pid, args = eval result
         
         # It needs to be an array of params.
         #
@@ -43,9 +43,9 @@ class Suckerfish
         #
         execute_block_with *args
         
+        # Kill off all the workers with the old parameters.
         #
-        #
-        kill_each_worker_except pid
+        kill_each_worker_except child_pid
         
       # TODO rescue on error.
         
@@ -53,13 +53,17 @@ class Suckerfish
     end
   end
   
-  # TODO This needs to be webserver agnostic.
+  # Returns all the worker pids.
+  #
+  # Note: This will eventually need to be web server agnostic.
   #
   def worker_pids
     Unicorn::HttpServer::WORKERS.keys
   end
   
-  # Taken from Unicorn.
+  #
+  #
+  # Note: Body taken from Unicorn.
   #
   def kill_each_worker_except pid
     worker_pids.each do |wpid|
@@ -73,16 +77,19 @@ class Suckerfish
   rescue Errno::ESRCH
     remove_worker wpid
   end
-  # TODO This needs to be Webserver agnostic.
+  
+  # Remove the worker with the given pid.
   #
-  def remove_worker wpid
-    worker = Unicorn::HttpServer::WORKERS.delete(wpid) and worker.tmp.close rescue nil
+  # Note: This will eventually need to be web server agnostic.
+  #
+  def remove_worker worker_pid
+    worker = Unicorn::HttpServer::WORKERS.delete(worker_pid) and worker.tmp.close rescue nil
   end
   
   # This first tries to update in the child process,
-  # and if successful, in the parent process
+  # and if successful, in the parent process.
   #
-  # TODO Alias?
+  # TODO Alias? Rename?
   #
   def process *args
     # Close the child, maybe.
@@ -91,7 +98,9 @@ class Suckerfish
     
     # Try to execute it.
     #
-    result = execute_block_with *args # Dup if someone is trying to be clever?
+    # Dup if someone is trying to be clever?
+    #
+    result = execute_block_with *args
     
     # Success! Write the parent.
     #
@@ -123,6 +132,9 @@ class Suckerfish
   #
   # Note: The ;;; is the end marker for the message.
   # TODO: Clever? Too clever?
+  #
+  # TODO: Problematic if you want to pass objects that can't be reevaluated from the string.
+  #       I actually need to also eval this string in the child.
   #
   def write_parent parameters
     parent.write "#{[Process.pid, parameters]};;;"

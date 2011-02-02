@@ -6,7 +6,7 @@ describe Suckerfish do
     lambda { Suckerfish.new }.should raise_error
   end
   it 'can only be instantiated with a block' do
-    lambda { Suckerfish.new { |a| a } }.should_not raise_error
+    lambda { Suckerfish.new { } }.should_not raise_error
   end
   
   describe 'allocation' do
@@ -22,7 +22,7 @@ describe Suckerfish do
   
   describe 'instance' do
     before(:each) do
-      @suckerfish = Suckerfish.new {}
+      @suckerfish = Suckerfish.new { |a, b, *c| [a, b, c] }
     end
     it 'has a child reader' do
       lambda { @suckerfish.child }.should_not raise_error
@@ -48,6 +48,18 @@ describe Suckerfish do
         Process.should_receive(:kill).once.with :QUIT, Process.pid
         
         @suckerfish.harakiri
+      end
+    end
+    
+    describe 'execute_block_with' do
+      it 'delegates to the block_to_execute' do
+        @suckerfish.execute_block_with(1,2).should == [1,2,[]]
+      end
+      it 'delegates to the block_to_execute' do
+        @suckerfish.execute_block_with(1,2,3).should == [1,2,[3]]
+      end
+      it 'delegates to the block_to_execute' do
+        @suckerfish.execute_block_with(1,2,3,4).should == [1,2,[3,4]]
       end
     end
     

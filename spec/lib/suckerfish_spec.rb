@@ -15,17 +15,47 @@ describe Suckerfish do
     lambda { Suckerfish.in_master do end }.should_not raise_error
   end
   
-  # context 'forked tests' do
-  #   suckerfish = Suckerfish.in_master { |a, b, *c| [a, b, c] }
-  #   fork do
-  #     # child tests
-  #     it 'can call the master' do
-  #       suckerfish.call_master_with 1,2,3
-  #     end
-  #   end
-  #   # parent tests
-  #   
-  # end
+  context 'forked tests' do
+    suckerfish = Suckerfish.in_master { |a, b, *c| [a, b, c] }
+    
+    child_id = fork do
+      
+      # Child tests.
+      #
+      it 'can returns the result' do
+        Process.stub :kill
+        
+        suckerfish.call_master_with(1,2,3).should == [1,2,[3]]
+      end
+      it 'calls the master and is not killed' do
+        Process.should_receive(:kill).with(:QUIT, anything).never
+        
+        suckerfish.call_master_with 1,2,3
+      end
+      it 'can only send serializable objects (simple parameters)' do
+        object = Class.new(){}.new
+        
+        lambda { suckerfish.call_master_with(object) }.should raise_error(SyntaxError)
+      end
+      
+    end
+    
+    # # Parent tests.
+    # #
+    # before(:each) do
+    #   suckerfish.stub! :worker_pids => [child_id, Process.pid]
+    # end
+    # it 'kills the other child after writing the parent' do
+    #   Process.should_receive(:kill).once.with :QUIT, anything
+    #   
+    #   # It kills the child because this call did not come from the child.
+    #   #
+    #   suckerfish.write_parent suckerfish.messagified([1,2,3])
+    # end
+    
+    Process.wait 0
+    
+  end
   
   describe 'allocation' do
     before(:each) do

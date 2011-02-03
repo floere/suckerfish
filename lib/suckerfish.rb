@@ -45,7 +45,7 @@ class Suckerfish
         
         # Execute the block with the given parameters.
         #
-        execute_block_with *args
+        execute_block_with args
         
         # Kill off all the workers with the old parameters.
         #

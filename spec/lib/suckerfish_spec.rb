@@ -8,10 +8,24 @@ describe Suckerfish do
   it 'can only be instantiated with a block' do
     lambda { Suckerfish.new { } }.should_not raise_error
   end
-  
-  context 'forked tests' do
-    
+  it 'offers another method than new' do
+    lambda { Suckerfish.in_master }.should raise_error
   end
+  it 'offers another method than new' do
+    lambda { Suckerfish.in_master do end }.should_not raise_error
+  end
+  
+  # context 'forked tests' do
+  #   suckerfish = Suckerfish.in_master { |a, b, *c| [a, b, c] }
+  #   fork do
+  #     # child tests
+  #     it 'can call the master' do
+  #       suckerfish.call_master_with 1,2,3
+  #     end
+  #   end
+  #   # parent tests
+  #   
+  # end
   
   describe 'allocation' do
     before(:each) do
@@ -26,7 +40,7 @@ describe Suckerfish do
   
   describe 'instance' do
     before(:each) do
-      @suckerfish = Suckerfish.new { |a, b, *c| [a, b, c] }
+      @suckerfish = Suckerfish.in_master { |a, b, *c| [a, b, c] }
     end
     it 'has a child reader' do
       lambda { @suckerfish.child }.should_not raise_error
@@ -45,6 +59,31 @@ describe Suckerfish do
     end
     it 'has a block_to_execute reader which returns a block' do
       @suckerfish.block_to_execute.should be_instance_of(Proc)
+    end
+    
+    describe 'call_master_with' do
+      context 'non-failing' do
+        it 'calls methods correctly, and in order' do
+          @suckerfish.should_receive(:close_child).once.with().ordered
+          @suckerfish.should_receive(:messagified).once.with([1,2,3]).ordered.and_return :some_message
+          @suckerfish.should_receive(:simulate_with).once.with(:some_message).ordered
+          @suckerfish.should_receive(:write_parent).once.with(:some_message).ordered
+          
+          @suckerfish.call_master_with 1, 2, 3
+        end
+      end
+      context 'failing' do
+        before(:each) do
+          @exception = RuntimeError.new 'Nope.'
+          @suckerfish.should_receive(:close_child).and_raise @exception
+        end
+        it 'performs harakiri and reraise' do
+          @suckerfish.should_receive(:harakiri).once.with
+          @suckerfish.should_receive(:raise).once.with anything
+          
+          @suckerfish.call_master_with @exception
+        end
+      end
     end
     
     describe 'simulate_with' do
@@ -82,7 +121,7 @@ describe Suckerfish do
     
     describe 'harakiri' do
       it 'uses QUIT to kill itself' do
-        Process.should_receive(:kill).once.with :QUIT, Process.pid
+        Process.should_receive(:kill).once.with :QUIT, 0
         
         @suckerfish.harakiri
       end

@@ -1,6 +1,25 @@
-# This is a simple interface that provides the user of
-# with the possibility to change parameters or call methods
-# in the master while the application is running.
+# Suckerfish allows you to pass simple parameters
+# through to the master process in Unicorn.
+#
+# Usage:
+#   # On initialization.
+#   # As an example, some object(s) we want to call methods on.
+#   #
+#   configuration = Configuration.new
+#   #
+#   # The configuration instance is captured in the block.
+#   #
+#   suckerfish = Suckerfish.in_master do |name|
+#     configuration.greet name
+#   end
+#
+#   # In the child process, e.g. in the controller where you
+#   # receive a request, you can call
+#   #   #call_master_with(same, parameters, as_in_the, in_master_block, above)
+#   #
+#   # Note: You can only pass to_s/eval de-/serializable objects.
+#   #
+#   suckerfish.call_master_with "Florian"
 #
 # Important Note:
 # This will only work in Master/Child configurations.

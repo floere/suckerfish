@@ -131,6 +131,8 @@ class Suckerfish
   # Simulates the sending and executing of the block
   # as it would be in the parent.
   #
+  # If it doesn't fail, good.
+  #
   def simulate_with message
     # Try to eval the message given.
     #
@@ -140,7 +142,7 @@ class Suckerfish
     #
     # Dup if someone is trying to be clever?
     #
-    result = execute_block_with parameters
+    execute_block_with parameters
   end
   
   # Translates the parameters into a message that can be sent to the parent.
@@ -149,7 +151,7 @@ class Suckerfish
     %Q{#{[Process.pid, parameters]};;;}
   end
   
-  # Kills itself, but still "answering" the request honorably.
+  # Kills itself, but still "answering" the received request honorably.
   #
   def harakiri
     Process.kill :QUIT, Process.pid
